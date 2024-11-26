@@ -1,5 +1,5 @@
 
-# Nigeria Response Uncertainty Framework
+# Fertilizer Response Uncertainty Framework
 
 This repository contains the **Integrated Spatial Modeling Framework** for analyzing fertilizer investment returns in smallholder maize production in Nigeria. The framework is designed to support strategic investment decisions by integrating spatial, agronomic, and economic data to estimate returns on fertilizer application while incorporating production uncertainties.
 
