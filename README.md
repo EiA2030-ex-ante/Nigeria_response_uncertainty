@@ -62,6 +62,7 @@ The main scripts are organized to handle data cleaning, modeling, and visualizat
 This project is licensed under the Creative Commons Attribution 4.0 International License. See the LICENSE file for details.
 
 ## Acknowledgments
-    - This work was made possible through the OneCGIAR Initiative on Excellence in Agronomy (INV-005431), as well as through the Guiding Acid Soil Management Investments in Africa (GAIA) project (Grant no: INV-029117), supported by the Bill & Melinda Gates Foundation (BMGF). 
-    - We would like to thank all funders supporting research through contributions to the CGIAR Trust Fund: https://www.cgiar.org/funders/.
+- This work was made possible through the OneCGIAR Initiative on Excellence in Agronomy (INV-005431), as well as through the Guiding Acid Soil Management Investments in Africa (GAIA) project (Grant no: INV-029117), supported by the Bill & Melinda Gates Foundation (BMGF). 
+  
+- We would like to thank all funders supporting research through contributions to the CGIAR Trust Fund: https://www.cgiar.org/funders/.
     
