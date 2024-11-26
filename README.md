@@ -36,10 +36,10 @@ The main scripts are organized to handle data cleaning, modeling, and visualizat
 
 - **`1_data.R`**: Prepares and cleans the primary datasets for analysis.
 - **`2_data_weather.R`**: Processes weather-related data for integration into the analysis.
-- **`3_price_prediction_bisrat.R`**: Develops models for predicting fertilizer and maize prices.
-- **`4_response_bisrat.R`**: Analyzes yield response to fertilizer use across spatial and temporal dimensions.
-- **`5_main_analysis_2.R`**: Conducts the main econometric and spatial analysis to estimate fertilizer returns and model uncertainties.
-- **`6_graphs_bisrat.R`**: Generates visualizations and graphs to illustrate key findings.
+- **`3_price_prediction.R`**: Develops models for predicting fertilizer and maize prices.
+- **`4_response.R`**: Analyzes yield response to fertilizer use across spatial and temporal dimensions.
+- **`5_main_analysis.R`**: Conducts the main econometric and spatial analysis to estimate fertilizer returns and model uncertainties.
+- **`6_graphs.R`**: Generates visualizations and graphs to illustrate key findings.
 
 ### 4. Additional Files
 - **`.gitignore`**: Specifies files and folders to ignore in Git version control.
