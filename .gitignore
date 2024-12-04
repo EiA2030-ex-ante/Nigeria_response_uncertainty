@@ -1,6 +1,7 @@
 data/
 old_code/tmp_pr2_first10_100N_50P_15K_seed1492.tif
 
+.DS_Store
 
 # History files
 .Rhistory

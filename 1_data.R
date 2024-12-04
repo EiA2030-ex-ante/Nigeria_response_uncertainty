@@ -43,34 +43,20 @@ for (d in ds) {
 	}
 }
 
-
 ## Population
-
 pop <- geodata::population(year=2020,res=0.5, path="data/raw")
-
-pop <- terra::crop(pop, adm0, snap="near", mask=TRUE)
-
-terra::writeRaster(pop, "data/intermediate/population_2020_Nigeria.tif")
+pop <- terra::crop(pop, adm0, snap="near", mask=TRUE, filename="data/intermediate/population_2020_Nigeria.tif")
 
 ## Access (travel time to cities)
-
 tt_cities_u3 <- geodata::travel_time(to="city", size=3,up = TRUE, path="data/raw")
-
-tt_cities_u3 <- terra::crop(tt_cities_u3, adm0, snap="near", mask=TRUE)
-
-terra::plot(tt_cities_u3)
-
-terra::writeRaster(tt_cities_u3, "data/intermediate/travel_time_cities_3_Nigeria.tif")
+tt_cities_u3 <- terra::crop(tt_cities_u3, adm0, mask=TRUE, filename="data/intermediate/travel_time_cities_3_Nigeria.tif")
 
 ## Access (travel time to ports)
-
 tt_ports_u2 <- geodata::travel_time(to="port", size=2,up = TRUE, path="data/raw")
+tt_ports_u2 <- terra::crop(tt_ports_u2, adm0, mask=TRUE, filename="data/intermediate/travel_time_ports_2_Nigeria.tif")
 
-tt_ports_u2 <- terra::crop(tt_ports_u2, adm0, snap="near", mask=TRUE)
 
-terra::plot(tt_ports_u2, col = wesanderson::wes_palette("Darjeeling1"))
-
-terra::writeRaster(tt_ports_u2, "data/intermediate/travel_time_ports_2_Nigeria.tif")
-
-stack <- c(pop, tt_cities_u3, tt_ports_u2)
-terra::plot(stack)
+#terra::plot(tt_cities_u3)
+#terra::plot(tt_ports_u2, col = wesanderson::wes_palette("Darjeeling1"))
+#stack <- c(pop, tt_cities_u3, tt_ports_u2)
+#terra::plot(stack)
