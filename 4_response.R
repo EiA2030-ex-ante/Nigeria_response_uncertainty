@@ -1,26 +1,28 @@
-# Load necessary libraries
-library(terra)         # For raster operations
-library(GA)            # For genetic algorithm optimization
-library(randomForest)  # For the random forest model
-library(parallel)      # For parallel processing
 
-# ----------------------------------------------
-# Step 1: Load and Prepare Rasters
-# ----------------------------------------------
+this <- system('hostname', TRUE)
+if (this == "LAPTOP-IVSPBGCA") {
+	wd <- "G:/.shortcut-targets-by-id/1mfeEftF_LgRcxOT98CBIaBbYN4ZHkBr_/share/maize_variability"
+} else if (this == "DESKTOP-JORDAN") {
+  wd <- "C:/DATA/Nigeria/EiA"
+} else {
+  wd <- "."
+}
+setwd(wd)
+
+
+# Load necessary libraries
+#library(terra)         # For raster operations
+#library(GA)            # For genetic algorithm optimization
+#library(randomForest)  # For the random forest model
+#library(parallel)      # For parallel processing
+
 
 # Create directory for results
 dir.create("data/results/model/", FALSE, TRUE)
 
-# Set up color palette
-pal <- colorRampPalette(c(wesanderson::wes_palettes$Zissou1))
-pal2 <- colorRampPalette(c(wesanderson::wes_palettes$AsteroidCity2))
 # Read administrative boundaries
-adm1 <- geodata::gadm(country = "NGA",
-                      level = 1,
-                      path = "data/raw")
-adm0 <- geodata::gadm(country = "NGA",
-                      level = 0,
-                      path = "data/raw")
+adm0 <- geodata::gadm(country = "NGA", level = 0, path = "data/raw")
+adm1 <- geodata::gadm(country = "NGA",level = 1, path = "data/raw")
 
 # Define extent for Nigeria
 nga_ext <- c(2, 15, 4, 14)
@@ -29,55 +31,25 @@ nga_ext <- c(2, 15, 4, 14)
 npkg <- terra::rast("data/intermediate/predicted_nitrogen_price_Nigeria.tif")
 mpkg <- terra::rast("data/intermediate/predicted_maize_price_Nigeria.tif")
 
-# Plot nitrogen price raster
-terra::plot(npkg, col = pal, main = "Predicted Nitrogen price (USD/kg)")
-terra::plot(adm0,
-            border = "white",
-            add = TRUE,
-            lwd = 1)
-
 # Read maize observations
 d <- read.csv("data/intermediate/observations/NGA_Jordan.csv")
-s <- vect(d, geom = c("longitude", "latitude"))
-
-# Plot observations
-terra::plot(
-  s,
-  border = "white",
-  add = TRUE,
-  pch = 15,
-  col = "white"
-)
+s <- terra::vect(d, geom = c("longitude", "latitude"), crs="+proj=longlat")
 
 # Bring in raster layers for prediction
-rain_sum <- list.files("data/intermediate/chirps/stats",
-                       pattern = "_sum",
-                       full.names = TRUE) |> terra::rast()
-rain_cv <- list.files("data/intermediate/chirps/stats",
-                      pattern = "_cv",
-                      full.names = TRUE) |> terra::rast()
+rain_sum <- terra::rast(list.files("data/intermediate/chirps/stats", pattern = "_sum", full.names = TRUE))
+rain_cv <- terra::rast(list.files("data/intermediate/chirps/stats", pattern = "_cv", full.names = TRUE))
 soil <- terra::rast("data/intermediate/soil/soil_af_isda_3m.tif")
 
 # Extract data for observations
 s <- s[!is.na(s$pyear), ]
-esum <- extract(rain_sum, s, layer = match(s$pyear, gsub("rain_", "", names(rain_sum))))
-ecv <- extract(rain_cv, s, layer = match(s$pyear, gsub("raincv_", "", names(rain_cv))))
-esoil <- extract(soil, s, ID = FALSE)
+esum <- terra::extract(rain_sum, s, layer = match(s$pyear, gsub("rain_", "", names(rain_sum))))
+ecv <- terra::extract(rain_cv, s, layer = match(s$pyear, gsub("raincv_", "", names(rain_cv))))
+esoil <- terra::extract(soil, s, ID = FALSE)
 
 s <- cbind(s, data.frame(rain = esum$value, raincv = ecv$value, esoil))
 
 # Define predictor variables
-predictors <- c(
-  "N_fertilizer",
-  "P_fertilizer",
-  "K_fertilizer",
-  "oc",
-  "pH",
-  "sand",
-  "clay",
-  "rain",
-  "raincv"
-)
+predictors <- c("N_fertilizer", "P_fertilizer", "K_fertilizer", "oc", "pH", "sand", "clay", "rain", "raincv")
 
 # Prepare data for model training
 d <- data.frame(s)[, c("yield", predictors)] |> na.omit()
@@ -94,60 +66,32 @@ plot(crf)
 #trf
 #mt <- trf[which.min(trf[,2]),1]
 #mt
-
-
-
 # export crf model
 saveRDS(crf, "data/results/model/crf.rds")
 
 #### Predict yields ####
-soil <- crop(soil, ext(adm0))
-rain_sum <- crop(rain_sum, ext(adm0))
-rain_cv <- crop(rain_cv, ext(adm0))
+soil <- terra::crop(soil, adm1)
+rain_sum <- terra::crop(rain_sum, adm1)
+rain_cv <- terra::crop(rain_cv, adm1)
 
 # Compute mean rainfall rasters
-meanrainsum <- mean(rain_sum)
-meanraincv <- mean(rain_cv)
-names(meanrainsum) <- "rain"
-names(meanraincv) <- "raincv"
+meanrainsum <- terra::mean(rain_sum, wopt=list(names="rain"))
+meanraincv <- terra::mean(rain_cv, wopt=list(names="raincv"))
 
 # Resample price rasters to match soil raster
-npkg <- resample(npkg, soil)
-mpkg <- resample(mpkg, soil)
+npkg <- terra::resample(npkg, soil)
+mpkg <- terra::resample(mpkg, soil)
 
-
-
-
-
-soil_2 <- soil[c("oc", "pH", "sand", "clay")]
-
-
+soil_2 <- soil[[c("oc", "pH", "sand", "clay")]]
 # Create predictor raster stack
 preds <- c(soil[[c("oc", "pH", "sand", "clay")]], meanrainsum, meanraincv, npkg, mpkg)
-names(preds) <- c("oc", "pH", "sand", "clay", "rain", "raincv", "npkg", "mpkg")
 
-
-# plot the location of the data 
-
-png("data/results/figures/observed_yield.png", units = "in", width = 7, height = 7, res = 600)
-par(mar = c(0, 15, 0, 0), family = my_font, cex = 0.8, oma = c(0, 0, 0, 0))
-
-plot(meanrainsum, col = scales::alpha(pal(5),0.7), legend=F, breaks = c(-Inf, 500, 1000, 2000, 3000, Inf))
-legend("bottom",  cex=1, box.col="white", inset=-0.02, title="Mean annual rainfall", legend=c('0 - 500', '500 - 1000', '1000 - 2000','2000-3000', '>=3000'), fill = scales::alpha(pal(5),0.7), horiz=T, xpd = T)
-plot(s, border = "white", col = "#000643", pch = 15, add=T)
-legend("bottomright", cex=1, box.col="white", inset=0.02, legend="Observed yield", pch=15, col="#000643", xpd = T)
-plot(adm0, border = "#000643", add = TRUE, lwd = 2)
-
-dev.off()
 # ----------------------------------------------
 # Step 2: Convert Raster Stack to Data Frame
 # ----------------------------------------------
 
 # Convert raster stack to data frame
-preds_df <- as.data.frame(preds,
-                          xy = TRUE,
-                          cells = TRUE,
-                          na.rm = TRUE)
+preds_df <- as.data.frame(preds, xy = TRUE, cells = TRUE, na.rm = TRUE)
 
 # Extract cell indices and coordinates
 cell_indices <- preds_df$cell
@@ -158,8 +102,7 @@ coordinates <- preds_df[, c("x", "y")]
 # ----------------------------------------------
 
 profitability <- function(yield, yield0, value, cost) {
-  profit <- (yield - yield0) * value - cost
-  return(profit)
+  (yield - yield0) * value - cost
 }
 
 # ----------------------------------------------
@@ -182,7 +125,7 @@ optimize_fertilizer <- function(cell_data) {
   predictors <- predictors[, !names(predictors) %in% c("npkg", "mpkg")]
   
   # Ensure all predictor variables are numeric
-  predictors[] <- lapply(predictors, function(x) as.numeric(as.character(x)))
+  # predictors[] <- lapply(predictors, function(x) as.numeric(as.character(x)))
   
   # Ensure that all variables expected by the model are present
   model_variables <- crf$xNames
@@ -192,11 +135,7 @@ optimize_fertilizer <- function(cell_data) {
   }
   
   # Baseline yield (yield without fertilizer)
-  const_data_zero <- data.frame(
-    N_fertilizer = 0,
-    P_fertilizer = 0,
-    K_fertilizer = 0
-  )
+  const_data_zero <- data.frame(N_fertilizer = 0, P_fertilizer = 0, K_fertilizer = 0)
   
   baseline_data <- cbind(predictors, const_data_zero)
   yield0 <- predict(crf, newdata = baseline_data)
@@ -217,7 +156,7 @@ optimize_fertilizer <- function(cell_data) {
     
     # Predict yield with fertilizer application
     yield <- predict(crf, newdata = prediction_data)
-    
+
     # Calculate cost of fertilizers
     cost <- (N * N_price) + (P * P_price) + (K * K_price)
     
@@ -230,27 +169,16 @@ optimize_fertilizer <- function(cell_data) {
   
   # Run GA optimization
   ga_result <- GA::ga(
-    type = "real-valued",
-    fitness = fitness_function,
-    lower = c(0, 0, 0),
-    upper = c(200, 100, 100),
-    popSize = 20,
-    maxiter = 50,
-    run = 10,
-    optim = TRUE,
-    monitor = FALSE
+    type = "real-valued", fitness = fitness_function,
+    lower = c(0, 0, 0), upper = c(200, 100, 100),
+    popSize = 20, maxiter = 50, run = 10, optim = TRUE, monitor = FALSE
   )
   
   # Extract optimal NPK rates and maximum profit
   optimal_NPK <- ga_result@solution
   max_profit <- -ga_result@fitnessValue
   
-  return(list(
-    N_opt = optimal_NPK[1],
-    P_opt = optimal_NPK[2],
-    K_opt = optimal_NPK[3],
-    max_profit = max_profit
-  ))
+  return(list(N_opt=optimal_NPK[1], P_opt=optimal_NPK[2], K_opt=optimal_NPK[3], max_profit=max_profit))
 }
 
 # ----------------------------------------------
@@ -286,15 +214,8 @@ parallel::clusterEvalQ(cl, {
 results_list <- parallel::parLapply(cl, cell_data_list, function(cell_data) {
   tryCatch(
     optimize_fertilizer(cell_data = cell_data),
-    error = function(e) {
-      # Return NA values and the error message
-      list(
-        N_opt = NA,
-        P_opt = NA,
-        K_opt = NA,
-        max_profit = NA,
-        error = e$message
-      )
+    error = function(e) { # Return NA values and the error message
+      list(N_opt = NA, P_opt = NA, K_opt = NA, max_profit = NA, error = e$message)
     }
   )
 })
@@ -332,45 +253,34 @@ if (nrow(error_rows) > 0) {
 results_df_clean <- results_df[is.na(results_df$error), ]
 
 # Create rasters from results
-optimal_N_raster <- rast(results_df_clean[, c("x", "y", "N_opt")], crs = crs(preds))
-optimal_P_raster <- rast(results_df_clean[, c("x", "y", "P_opt")], crs = crs(preds))
-optimal_K_raster <- rast(results_df_clean[, c("x", "y", "K_opt")], crs = crs(preds))
-max_profit_raster <- rast(results_df_clean[, c("x", "y", "max_profit")], crs = crs(preds))
-
+optimal <- rast(results_df_clean[, c("x", "y", "N_opt", "P_opt", "K_opt", "max_profit")], crs = crs(preds))
+optimal <- mask(optimal, optimal$max_profit<0, TRUE, 0, filename="data/results/model/optimal.tif", overwrite = TRUE) 
 # ----------------------------------------------
 # Step 7: Save and Visualize the Resultant Rasters
 # ----------------------------------------------
 
-# Save rasters to files
-writeRaster(optimal_N_raster, "data/results/model/optimal_N.tif", overwrite = TRUE)
-writeRaster(optimal_P_raster, "data/results/model/optimal_P.tif", overwrite = TRUE)
-writeRaster(optimal_K_raster, "data/results/model/optimal_K.tif", overwrite = TRUE)
-writeRaster(max_profit_raster, "data/results/model/max_profit.tif", overwrite = TRUE)
+#### plottoing 
+# Set up color palette
+pal <- colorRampPalette(c(wesanderson::wes_palettes$Zissou1))
+pal2 <- colorRampPalette(c(wesanderson::wes_palettes$AsteroidCity2))
 
-# Optionally, plot the rasters
-plot(optimal_N_raster, main = "Optimal Nitrogen Rates")
-plot(optimal_P_raster, main = "Optimal Phosphorus Rates")
-plot(optimal_K_raster, main = "Optimal Potassium Rates")
-plot(max_profit_raster, main = "Maximum Profit")
-
-# Set optimal NPK rates to zero where profit < 0
-optimal_N_final <- ifel(max_profit_raster >= 0, optimal_N_raster, 0)
-names(optimal_N_final) <- "N_fertilizer"
-optimal_P_final <- ifel(max_profit_raster >= 0, optimal_P_raster, 0)
-names(optimal_P_final) <- "P_fertilizer"
-optimal_K_final <- ifel(max_profit_raster >= 0, optimal_K_raster, 0)
-names(optimal_K_final) <- "K_fertilizer"
-
-# Optionally, set negative profits to zero
-max_profit_final <- ifel(max_profit_raster >= 0, max_profit_raster, 0)
-names(max_profit_final) <- "max_profit"
-
-optimal_NPK_raster <- c(optimal_N_final, optimal_P_final, optimal_K_final)
-
-plot(c(optimal_NPK_raster, max_profit_final),  col=pal)
-
-# Save optimal NPK rates and maximum profit to disk
-writeRaster(optimal_NPK_raster, "data/results/model/optNPK.tif", overwrite = TRUE)
-writeRaster(max_profit_final, "data/results/model/optNPK_mprofit.tif", overwrite = TRUE)
+plot(optimal, col=pal)
 
 
+# plot the location of the data 
+png("plots/observed_yield.png", units = "in", width = 7, height = 7, res = 600)
+terra::plot(meanrainsum, col=pal(5), alpha=0.7, breaks=brks, 
+	plg=list(x=5.5, y=3.5,  legend=c('< 500', '500-1000', '1000-1500','1500-2000','2000-3000', '> 3000'), cex=.9, ncol=3, title="mean annual rainfall"))
+terra::lines(adm0, col="#000643", lwd = 2)
+terra::points(s, col = "#000643", pch = 15)
+terra::add_legend("bottomright", cex=.8, bg="white", inset=0.02, legend="field observations", pch=15, col="#000643", xpd = T)
+
+dev.off()
+
+
+# Plot observations
+terra::plot(s, border = "white", add = TRUE, pch = 15, col = "white")
+
+# Plot nitrogen price raster
+terra::plot(npkg, col = pal, main = "Predicted Nitrogen price (USD/kg)")
+terra::plot(adm0, border = "white", add = TRUE, lwd = 1)

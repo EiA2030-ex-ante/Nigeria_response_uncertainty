@@ -52,7 +52,7 @@ if (file.exists(fN)) {
 	npkg_pr1 <- rast(fN)
 } else {
 	rf1 <- randomForest::randomForest(N_pkg_USD ~ population_density + travel_time_to_cities_1 + travel_time_to_ports_1 , data=nprices, proximity=TRUE, importance=TRUE, ntree=10, mtry=2, nodesize=5)
-	npkg_pr1 <- terra::predict(geo_stack, rf1, filename= "data/intermediate/predicted_nitrogen_price_Nigeria.tif", overwrite=TRUE)
+	npkg_pr1 <- terra::predict(geo_stack, rf1, filename=fN, overwrite=TRUE, wopt=list(names= "npkg"))
 	rf1
 	#randomForest::varImpPlot(rf1)
 	#round(randomForest::importance(rf1), 4)
@@ -69,7 +69,7 @@ if (file.exists(fM)) {
 } else {
 	# predict the maize prices
 	rf2 <- randomForest::randomForest(mai_pkg_usd ~ population_density + travel_time_to_cities_1 + travel_time_to_ports_1, data=mprices, proximity=TRUE, importance=TRUE, ntree=10, mtry=2, nodesize=5)
-	mai_pkg_pr2 <- terra::predict(geo_stack, rf2, filename=, overwrite=TRUE)
+	mai_pkg_pr2 <- terra::predict(geo_stack, rf2, filename=fM, overwrite=TRUE, wopt=list(names= "mpkg"))
 	rf2
 	#randomForest::varImpPlot(rf2)
 	#round(randomForest::importance(rf2), 4)
